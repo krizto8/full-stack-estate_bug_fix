@@ -46,21 +46,28 @@ export const getPost = async (req, res) => {
     const token = req.cookies?.token;
 
     if (token) {
-      jwt.verify(token, process.env.JWT_SECRET_KEY, async (err, payload) => {
-        if (!err) {
-          const saved = await prisma.savedPost.findUnique({
-            where: {
-              userId_postId: {
-                postId: id,
-                userId: payload.id,
-              },
-            },
-          });
-          res.status(200).json({ ...post, isSaved: saved ? true : false });
-        }
-      });
+  jwt.verify(token, process.env.JWT_SECRET_KEY, async (err, payload) => {
+    if (err) {
+      return res.status(401).json({ error: 'Invalid token' });
     }
-    res.status(200).json({ ...post, isSaved: false });
+    try {
+      const saved = await prisma.savedPost.findUnique({
+        where: {
+          userId_postId: {
+            postId: id,
+            userId: payload.id,
+          },
+        },
+      });
+      return res.status(200).json({ ...post, isSaved: saved ? true : false });
+    } catch (error) {
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+} else {
+  return res.status(400).json({ error: 'Token not provided' });
+}
+
   } catch (err) {
     console.log(err);
     res.status(500).json({ message: "Failed to get post" });
